@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Cookie Bridge · Cookie 管理",
   "description": "选取、收藏和跨站应用 Cookie，快速切换开发账号。数据仅在本机保存。",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "minimum_chrome_version": "120",
   "permissions": ["cookies", "storage", "activeTab"],
   "optional_host_permissions": ["http://*/*", "https://*/*"],
