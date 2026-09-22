@@ -1,0 +1,10 @@
+node_modules/
+dist/
+dist.zip
+test-results/
+*.local
+.DS_Store
+.codegraph/
+.env
+.env.*
+!.env.example

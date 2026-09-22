@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 128 128" fill="none">
+  <title>Cookie Bridge</title>
+  <desc>An off-white cookie with a bridge arch, on a cobalt blue rounded square.</desc>
+  <defs>
+    <mask id="cookie">
+      <circle cx="64" cy="64" r="40" fill="white"/>
+      <circle cx="99" cy="37" r="17" fill="black"/>
+      <path d="M47 107V87a17 17 0 0 1 34 0v20Z" fill="black"/>
+      <circle cx="49" cy="44" r="5" fill="black"/>
+      <circle cx="71" cy="39" r="4" fill="black"/>
+      <circle cx="39" cy="65" r="4" fill="black"/>
+    </mask>
+  </defs>
+  <rect x="4" y="4" width="120" height="120" rx="28" fill="#4164EB"/>
+  <circle cx="64" cy="64" r="40" fill="#F8FAFF" mask="url(#cookie)"/>
+</svg>

@@ -1,0 +1,18 @@
+{
+  "version": 1,
+  "name": "演示账号（虚构值）",
+  "source": { "origin": "https://example.com", "path": "/" },
+  "cookies": [
+    {
+      "name": "demo_session",
+      "value": "example-only==",
+      "domain": "example.com",
+      "path": "/",
+      "session": true,
+      "secure": false,
+      "httpOnly": false,
+      "hostOnly": true,
+      "sameSite": "lax"
+    }
+  ]
+}
