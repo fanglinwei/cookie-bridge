@@ -226,6 +226,39 @@ try {
   for (const view of ['manage', 'popup']) {
     await panel.goto(`chrome-extension://${id}/index.html?${view === 'manage' ? 'view=manage&' : ''}target=${destinationId}`);
     await panel.setViewportSize({ width: view === 'manage' ? 1100 : 440, height: view === 'manage' ? 850 : 540 });
+    const importButton = panel.getByRole('button', { name: '导入', exact: true });
+    const dialog = panel.locator('dialog');
+    await importButton.click();
+    const entering = await dialog.evaluate(element => {
+      const animations = element.getAnimations({ subtree: true });
+      for (const animation of animations) { animation.pause(); animation.currentTime = 150; }
+      const style = getComputedStyle(element);
+      return { opacity: Number(style.opacity), y: new DOMMatrix(style.transform).m42, backdrop: Number(getComputedStyle(element, '::backdrop').opacity) };
+    });
+    assert.ok(entering.opacity > 0 && entering.opacity < 1 && entering.y > -20 && entering.y < 0, `${view}: dialog moves down and fades in`);
+    assert.ok(entering.backdrop > 0 && entering.backdrop < 1, `${view}: backdrop fades in`);
+    await dialog.evaluate(element => { for (const animation of element.getAnimations({ subtree: true })) animation.finish(); });
+    await dialog.getByRole('button', { name: '关闭', exact: true }).click();
+    const leaving = await dialog.evaluate(element => {
+      const animations = element.getAnimations({ subtree: true });
+      for (const animation of animations) { animation.pause(); animation.currentTime = 150; }
+      return { open: element.open, inert: element.inert, content: element.textContent.includes('Cookie 文本或 JSON'), display: getComputedStyle(element).display, opacity: Number(getComputedStyle(element).opacity), backdrop: Number(getComputedStyle(element, '::backdrop').opacity) };
+    });
+    assert.ok(!leaving.open && leaving.inert && leaving.content && leaving.display !== 'none' && leaving.opacity > 0 && leaving.opacity < 1, `${view}: closing retains content for the fade without accepting input`);
+    assert.ok(leaving.backdrop > 0 && leaving.backdrop < 1, `${view}: backdrop fades out`);
+    await dialog.evaluate(element => { for (const animation of element.getAnimations({ subtree: true })) animation.finish(); });
+    await dialog.waitFor({ state: 'hidden' });
+    assert.equal(await importButton.evaluate(element => document.activeElement === element), true);
+    await importButton.click();
+    await panel.keyboard.press('Escape');
+    await dialog.waitFor({ state: 'hidden' });
+    await panel.emulateMedia({ reducedMotion: 'reduce' });
+    await importButton.click();
+    assert.equal(await dialog.evaluate(element => element.getAnimations({ subtree: true }).length), 0);
+    await panel.keyboard.press('Escape');
+    await dialog.waitFor({ state: 'hidden' });
+    await panel.emulateMedia({ reducedMotion: 'no-preference' });
+    passed(`${view} dialog entry, exit, backdrop, focus restoration, Escape and reduced motion`);
     const searchInput = panel.getByRole('searchbox');
     await searchInput.click();
     assert.equal(await searchInput.evaluate(element => getComputedStyle(element).outlineStyle), 'none');
@@ -512,7 +545,7 @@ try {
   await panel.getByRole('heading', { name: '新增 Cookie', exact: true }).waitFor();
   assert.equal(await panel.evaluate(() => Boolean(document.activeElement.closest('dialog'))), true);
   await panel.keyboard.press('Escape');
-  assert.equal(await panel.locator('dialog').isVisible(), false);
+  await panel.locator('dialog').waitFor({ state: 'hidden' });
   assert.equal(await panel.evaluate(() => document.activeElement.textContent.trim()), '＋ 新增');
   passed('popup layout and keyboard dialog open, escape and focus restoration');
 

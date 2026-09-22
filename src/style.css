@@ -700,10 +700,34 @@ dialog {
   border-radius:12px;
   color:inherit;
   box-shadow:0 14px 50px #18244440;
+  opacity:0;
+  transform:translateY(-20px);
+  transition:opacity .3s ease,transform .3s ease,display .3s allow-discrete,overlay .3s allow-discrete;
+}
+
+dialog[open] {
+  opacity:1;
+  transform:translateY(0);
 }
 
 dialog::backdrop {
   background:#18244466;
+  opacity:0;
+  transition:opacity .3s ease,display .3s allow-discrete,overlay .3s allow-discrete;
+}
+
+dialog[open]::backdrop {
+  opacity:1;
+}
+
+@starting-style {
+  dialog[open] {
+    opacity:0;
+    transform:translateY(-20px);
+  }
+  dialog[open]::backdrop {
+    opacity:0;
+  }
 }
 
 .dialog-header,.dialog-footer {
@@ -1118,6 +1142,8 @@ html:not(.manager) .app-footer {
 }
 
 @media(prefers-reduced-motion:reduce) {
+  dialog,
+  dialog::backdrop,
   .toast-slide-enter-active,
   .toast-slide-leave-active {
     transition:none;
