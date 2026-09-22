@@ -385,11 +385,9 @@ button,code,strong {
   background:#fff;
 }
 
-.search input:focus {
+input:not([type=checkbox]):not([type=radio]):focus,
+textarea:focus,select:focus {
   outline:none;
-}
-
-.search input[type=search]:focus-visible {
   background:#f2f5ff;
 }
 
