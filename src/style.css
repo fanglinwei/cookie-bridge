@@ -260,6 +260,61 @@ button,code,strong {
   margin:6px 0;
 }
 
+.toast {
+  position:fixed;
+  top:20px;
+  left:50%;
+  transform:translateX(-50%);
+  z-index:1000;
+  display:flex;
+  align-items:center;
+  gap:9px;
+  width:max-content;
+  max-width:calc(100vw - 32px);
+  padding:9px 12px;
+  border:1px solid var(--line);
+  border-radius:8px;
+  background:white;
+  color:#25304a;
+  box-shadow:0 4px 18px #1824441a;
+  font-size:13px;
+  overflow-wrap:anywhere;
+}
+
+.toast > span:first-child {
+  flex-shrink:0;
+  font-weight:700;
+}
+
+.toast-success {
+  color:#67c23a;
+  background:#f0f9eb;
+  border-color:#e1f3d8;
+}
+
+.toast-error {
+  color:#f56c6c;
+  background:#fef0f0;
+  border-color:#fde2e2;
+}
+
+.toast-warning {
+  color:#e6a23c;
+  background:#fdf6ec;
+  border-color:#faecd8;
+}
+
+.toast-slide-enter-active,
+.toast-slide-leave-active {
+  transition:opacity .3s ease, transform .3s ease;
+}
+
+.toast-slide-enter-from,
+.toast-slide-leave-to {
+  opacity:0;
+  transform:translate(-50%, -16px);
+}
+
 .clipboard-card {
   border:1px solid #d7c99d;
   border-radius:10px;
@@ -330,11 +385,19 @@ button,code,strong {
   background:#fff;
 }
 
+.search input:focus {
+  outline:none;
+}
+
+.search input[type=search]:focus-visible {
+  background:#f2f5ff;
+}
+
 .selection-bar {
   display:flex;
   align-items:center;
   gap:12px;
-  padding:7px 3px 11px;
+  padding:7px 3px 11px 15px;
   font-size:11px;
   color:var(--muted);
 }
@@ -375,7 +438,7 @@ button,code,strong {
 }
 
 .cookie-row>input {
-  margin-top:4px;
+  margin-top:7.5px;
 }
 
 .cookie-main {
@@ -387,12 +450,39 @@ button,code,strong {
   display:flex;
   align-items:center;
   gap:7px;
-  flex-wrap:wrap;
+  flex-wrap:nowrap;
+  min-width:0;
 }
 
 .cookie-title strong {
   font-family:ui-monospace,SFMono-Regular,monospace;
   font-size:13px;
+  flex:0 0 auto;
+  max-width:40%;
+  overflow:hidden;
+  white-space:nowrap;
+  text-overflow:ellipsis;
+}
+
+.cookie-value-copy {
+  flex:0 1 auto;
+  max-width:240px;
+  min-width:0;
+  overflow:hidden;
+  white-space:nowrap;
+  text-overflow:ellipsis;
+  text-align:left;
+  font-family:ui-monospace,SFMono-Regular,monospace;
+  color:var(--muted);
+}
+
+.cookie-visibility {
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  flex-shrink:0;
+  padding:6px;
+  color:var(--muted);
 }
 
 .tag {
@@ -403,16 +493,6 @@ button,code,strong {
   color:#5d6a83;
 }
 
-.cookie-value {
-  display:block;
-  color:#626e85;
-  font-size:12px;
-  margin:5px 0;
-  word-break:break-all;
-  max-height:100px;
-  overflow:auto;
-}
-
 .cookie-meta {
   font-size:10px;
   color:var(--muted);
@@ -421,6 +501,7 @@ button,code,strong {
 
 .row-actions {
   display:flex;
+  align-items:center;
   gap:10px;
   margin-top:6px;
 }
@@ -428,6 +509,35 @@ button,code,strong {
 .row-actions .quiet {
   padding:0;
   font-size:11px;
+}
+
+.cookie-flags {
+  display:flex;
+  flex-wrap:wrap;
+  gap:10px;
+}
+
+.cookie-controls:has(.cookie-flags) {
+  display:flex;
+  align-items:center;
+  flex-wrap:wrap;
+  gap:14px;
+  margin-top:8px;
+}
+
+.cookie-controls:has(.cookie-flags) .row-actions {
+  margin-top:0;
+}
+
+.flag-checkbox {
+  gap:6px;
+  padding:4px 0;
+  font-size:11px;
+}
+
+.flag-checkbox:has(input:disabled) {
+  opacity:.45;
+  cursor:not-allowed;
 }
 
 .batch-actions {
@@ -625,12 +735,12 @@ dialog::backdrop {
   min-width:0;
 }
 
-.dialog-content>label {
+.dialog-content>label:not(.check) {
   display:block;
   margin-bottom:13px;
 }
 
-.dialog-content>label input,.dialog-content>label textarea {
+.dialog-content>label input:not([type=checkbox]),.dialog-content>label textarea {
   margin-top:5px;
 }
 
@@ -640,7 +750,7 @@ dialog .notice {
 
 .editor-grid {
   display:grid;
-  grid-template-columns:1fr 1fr;
+  grid-template-columns:minmax(0,1fr) minmax(0,1fr);
   gap:12px;
 }
 
@@ -648,7 +758,7 @@ dialog .notice {
   font-size:12px;
 }
 
-.editor-grid label:nth-child(2) {
+.editor-wide {
   grid-column:1/-1;
 }
 
@@ -656,8 +766,30 @@ dialog .notice {
   margin-top:4px;
 }
 
-.editor-grid .check {
-  align-self:center;
+.editor-group {
+  min-width:0;
+  margin:0;
+  padding:10px 12px 12px;
+  border:1px solid var(--line);
+  border-radius:7px;
+}
+
+.editor-group legend {
+  padding:0 5px;
+  font-size:12px;
+  font-weight:600;
+  color:var(--muted);
+}
+
+.editor-options {
+  display:flex;
+  flex-wrap:wrap;
+  gap:12px 20px;
+}
+
+.expiration-field {
+  display:block;
+  margin-top:12px;
 }
 
 .editor-item {
@@ -672,6 +804,13 @@ dialog .notice {
   font-size:12px;
   font-weight:600;
   overflow-wrap:anywhere;
+}
+
+.apply-cookie-label {
+  display:inline-flex;
+  align-items:center;
+  gap:8px;
+  vertical-align:middle;
 }
 
 .editor-item .editor-grid {
@@ -731,17 +870,21 @@ dialog .notice {
   .manager .cookie-row {
     padding:16px 20px;
   }
+  .manager .selection-bar {
+    padding-left:21px;
+  }
   .manager .cookie-main {
     display:grid;
-    grid-template-columns:1fr auto;
+    grid-template-columns:minmax(0,1fr) auto;
     gap:0 20px;
   }
-  .manager .row-actions {
+  .manager .cookie-controls {
     grid-column:2;
-    grid-row:1/4;
+    grid-row:1;
     align-items:center;
+    margin-top:0;
   }
-  .manager .cookie-value,.manager .cookie-meta {
+  .manager .cookie-meta {
     grid-column:1;
   }
 }
@@ -763,9 +906,6 @@ dialog .notice {
   }
   .editor-grid {
     grid-template-columns:1fr;
-  }
-  .editor-grid label:nth-child(2) {
-    grid-column:auto;
   }
   .list-footer {
     align-items:flex-start;
@@ -932,7 +1072,16 @@ html:not(.manager) .cookie-panel > .empty {
 }
 
 html:not(.manager) .selection-bar {
-  padding:0 3px 7px;
+  padding:0 3px 7px 15px;
+}
+
+html:not(.manager) .cookie-value-copy {
+  margin-left:auto;
+  text-align:right;
+}
+
+html:not(.manager) .row-actions button:first-of-type {
+  margin-left:auto;
 }
 
 html:not(.manager) .batch-actions {
@@ -952,11 +1101,29 @@ html:not(.manager) .operation {
   overflow:auto;
 }
 
+html:not(.manager) .toast {
+  top:auto;
+  left:auto;
+  right:12px;
+  bottom:12px;
+  max-width:calc(100% - 24px);
+  transform:none;
+}
+
+html:not(.manager) .toast-slide-enter-from,
+html:not(.manager) .toast-slide-leave-to {
+  transform:translateY(8px);
+}
+
 html:not(.manager) .app-footer {
   display:none;
 }
 
 @media(prefers-reduced-motion:reduce) {
+  .toast-slide-enter-active,
+  .toast-slide-leave-active {
+    transition:none;
+  }
   * {
     scroll-behavior:auto!important;
   }

@@ -1,6 +1,6 @@
 {
   "name": "cookie-bridge",
-  "version": "1.0.0",
+  "version": "0.0.1",
   "private": true,
   "type": "module",
   "engines": {
@@ -9,16 +9,21 @@
   "scripts": {
     "dev": "vite --host 127.0.0.1",
     "build": "vite build",
-    "test": "node --test tests/*.test.mjs",
-    "check": "npm test && npm run build"
+    "test": "tsc -p tsconfig.test.json && node --test tests/*.test.mjs",
+    "check": "npm run typecheck && npm test && npm run build",
+    "typecheck": "vue-tsc --noEmit"
   },
   "dependencies": {
     "vue": "3.5.43"
   },
   "devDependencies": {
     "@crxjs/vite-plugin": "2.7.1",
+    "@types/chrome": "^0.3.0",
+    "@types/node": "^26.6.2",
     "@vitejs/plugin-vue": "6.0.9",
-    "vite": "8.3.0"
+    "typescript": "5.9.3",
+    "vite": "8.3.0",
+    "vue-tsc": "^3.3.11"
   },
   "license": "MIT",
   "description": "A local-first Chrome extension to select, save, and apply cookies across websites.",

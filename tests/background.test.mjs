@@ -32,7 +32,7 @@ async function background({ cookies = [], permitted = true, rejectName = '', ses
     },
     runtime: { id: 'test-extension', getURL: path => `chrome-extension://test-extension/${path}`, onMessage: { addListener: callback => { listener = callback; } } },
   };
-  await import(`../src/background.js?test=${crypto.randomUUID()}`);
+  await import(`../.test-build/src/background.js?test=${crypto.randomUUID()}`);
   const send = (action, values = {}) => new Promise(resolve => listener({ action, ...values }, { id: 'test-extension', url: 'chrome-extension://test-extension/index.html' }, resolve));
   return { send, data, target, cookies: () => cookies, reloads: () => reloads, navigate: url => { currentURL = url; }, listener: () => listener };
 }
@@ -82,4 +82,27 @@ test('messages from website contexts are refused', async () => {
   const env = await background();
   const accepted = env.listener()({ action: 'state' }, { id: 'test-extension', url: 'https://example.com/' }, () => assert.fail());
   assert.equal(accepted, false);
+});
+
+test('malformed message fields are rejected before cookie writes', async () => {
+  const env = await background();
+  for (const payload of [
+    { target: null },
+    { target: { ...env.target, tabId: '7' } },
+    { cookies: [{ ...fixture('a'), sameSite: 'invalid' }] },
+    { refresh: 'true' },
+    { edit: 'true' },
+    { original: { name: 'a' } },
+    { conflictMode: 'overwrite' },
+    { conflictIds: [{ name: 'a', path: 1 }] },
+  ]) {
+    const result = await env.send('apply', { target: env.target, cookies: [fixture('a')], ...payload });
+    assert.equal(result.ok, false);
+    assert.equal(env.cookies().length, 0);
+    assert.equal(env.reloads(), 0);
+  }
+  assert.equal((await env.send('target', { tabId: '7' })).ok, false);
+  const malformed = await new Promise(resolve => env.listener()(null, { id: 'test-extension', url: 'chrome-extension://test-extension/index.html' }, resolve));
+  assert.equal(malformed.ok, false);
+  assert.equal((await env.send('apply', { target: env.target, cookies: [fixture('a')] })).ok, true);
 });

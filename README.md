@@ -6,115 +6,105 @@
 
 English | [简体中文](README.zh-CN.md)
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![Chrome: 120+](https://img.shields.io/badge/Chrome-120%2B-4285F4.svg)](manifest.json)
-
-Select, save, and apply cookies across websites. A local-first Chrome Manifest V3 extension for switching development accounts and reusing cookie snapshots, built with Vue 3, Vite, and CRXJS.
-
-No backend or cloud sync. No fixed site pairs or hard-coded cookie names. The extension UI is currently in Chinese.
+A Chrome Manifest V3 cookie manager built with Vue 3, TypeScript, Vite, and CRXJS. Select any cookies on website A, copy them temporarily or save them as a favorite, then apply them to website B. Useful for switching development accounts and reusing login snapshots. The UI is in Chinese. Data stays on your device, with no fixed site pairs, hard-coded cookie names, backend, or cloud sync.
 
 ![Cookie Bridge manager with demo data](docs/screenshots/manager-desktop.png)
 
-## Features
+See the [design document](docs/design.md) for visual guidelines and brand colors.
 
-- Browse, select, edit, and delete cookies for an authorized website.
-- Copy selected cookies to a temporary buffer, or save named favorites for later use.
-- Apply a snapshot to another website while preserving cookie security attributes.
-- Preview conflicts and choose how to handle cookies with overlapping names or paths.
-- Update a favorite from its source website after reviewing a preview.
-- Import a Cookie request-header value or versioned JSON.
-- Manage site permissions and choose whether to refresh after a successful application.
+## Install
 
-## Install from source
-
-Requires **Chrome 120+** and **Node.js 20.19+ (20.x) or 22.12+**. Node.js 24 is a suitable choice.
+Requires **Chrome 120+** and **Node.js 20.19+ (20.x) or 22.12+**.
 
 ```sh
 git clone https://github.com/fanglinwei/cookie-bridge.git
 cd cookie-bridge
 npm ci
-npm run check
+npm run build
 ```
 
-1. Open `chrome://extensions` in Chrome.
-2. Enable **Developer mode**.
-3. Click **Load unpacked** and select the generated **`cookie-bridge/dist`** directory.
-4. Pin Cookie Bridge to the browser toolbar.
+1. Open `chrome://extensions` in Chrome and enable **Developer mode**.
+2. Click **Load unpacked** and select **`cookie-bridge/dist`** (not the source root).
+3. Pin Cookie Bridge to the toolbar.
 
-The repository root is source code; load the built `dist` directory. When updating, rebuild and click **Reload** on the extension card.
+After updating the source, run `npm run build` again and click **Reload** on the extension card.
 
 ## Usage
 
-1. Open the source website, open Cookie Bridge, and click **授权当前网站** (authorize this website).
-2. Select cookies and click **复制选中项** (copy selected), or **收藏选中项** (save selected as a favorite).
-3. Open the target website and authorize it through the extension.
-4. Click **应用已复制项** (apply copied cookies) or **应用到当前站** (apply a favorite to this website).
-5. Review any conflicts or options. By default, the target tab refreshes only after every write passes read-back verification.
+### Copy to another website
 
-“Copy selected” uses the extension's temporary buffer. “Copy value” and “Copy text” use the system clipboard.
+1. Open the source website, click the extension icon, and choose **授权当前网站** (authorize this website) on first use.
+2. Select cookies and click **复制选中项** (copy selected), or **收藏选中项** (save selected as a named favorite) for later use.
+3. Open the target website, click the extension icon, and authorize it.
+4. Click **应用已复制项** (apply copied cookies) or a favorite's **应用到当前站** (apply to this website). To apply only some cookies or adjust attributes and paths, first open **选项 / 应用选项** (options / application options) and select all or individual items. Unselected items remain in the buffer or favorite.
+5. Review any conflicts and confirm. By default, the target tab refreshes after every write passes read-back verification; automatic refresh can be disabled in settings.
 
-The manager stays bound to the tab from which it was opened. Closing that tab or changing its URL stops operations until you explicitly rebind it. A manager opened directly from extension settings can manage favorites and imports; open it from a website's popup to operate on that website.
+### View, edit, and save
 
-### Import formats
+- Cookie values are visible by default. Click a value to copy its full contents to the system clipboard; use the eye icon to hide or show it. **复制选中项** uses the extension's temporary buffer.
+- The manager supports editing and deleting cookies, and toggling **HttpOnly / Secure** directly. Toggles update after write verification without refreshing the website.
+- Favorites are fixed snapshots. Use **从来源更新** (update from source) on the source website, review the preview, and save to update one.
+- The manager stays bound to its original tab. Use **重新绑定** (rebind) after its URL changes; if the tab closes, reopen the extension from the target website. A manager opened through extension settings can manage favorites and imports; enter through a website's popup to read or write its cookies.
 
-Paste the value of a Cookie request header:
+### Import
+
+Paste a Cookie request-header value, or use the format in the [JSON example](examples/cookies.json):
 
 ```text
 demo_session=example==; theme=dark
 ```
 
-For versioned JSON, see [examples/cookies.json](examples/cookies.json), which contains fictional values only. Imports without a source are labeled as external / unknown source. Parsing and previewing an import does not write cookies; explicitly apply it or save it as a favorite. Other extensions' private export formats are not guaranteed to work.
+Review the preview, then apply it or save it as a favorite. Parsing alone does not modify a website. Other extensions' private export formats are not guaranteed to work.
 
-## Cookie behavior and limitations
+## Important notes
 
-- Cross-site application maps cookies to the target host and defaults to path `/`, preserving values and security attributes. The source domain is not carried over.
-- Cookies with matching name, domain, and path are overwritten; unrelated cookies remain. Conflicts involving other paths or parent domains require a choice before continuing.
-- Deletion lists the affected cookies and requires confirmation. Parent-domain cookies can affect other subdomains.
-- Cookies are not isolated by port or tab. Localhost projects may share cookies with the same name and path.
-- Batch writes are **not atomic**. A failure stops remaining writes, keeps per-item results, and prevents automatic refresh. There is no automatic rollback.
-- Changing a cookie's name, domain, or path writes and verifies the new cookie before deleting the original. A deletion failure is reported as partial completion.
-- Favorites are fixed snapshots. Updating from the source requires a preview; if any original cookie is missing, the old snapshot is retained.
-- Only regular windows and unpartitioned cookies are supported. Incognito and partitioned cookies are outside the supported scope.
-- Expired or incompatible cookies require attention. Extending a cookie's expiry cannot restore a server-invalidated token. Successful writes do not guarantee a successful login.
-- Limits: 200 cookies per favorite/application, 200 favorites, 1 MB per import, and 4,096 bytes for a cookie name and value combined. Chrome may reject writes because of additional attribute or domain rules.
-
-## Privacy and permissions
-
-| Permission | Purpose |
-| --- | --- |
-| `cookies` | Read and manage cookies on websites you authorize. |
-| `storage` | Store favorites, preferences, and the temporary copy buffer. |
-| `activeTab` | Identify the active website when you invoke the extension. |
-| Optional HTTP/HTTPS host access | Requested as needed for a website; review or remove grants in settings. |
-
-Favorites and preferences use `chrome.storage.local`; the temporary buffer uses `chrome.storage.session`. Storage is restricted to trusted extension contexts. Favorites are stored locally **without encryption** and are deleted when the extension is uninstalled. Restarting Chrome, reloading, or updating the extension clears the temporary buffer.
-
-Favorites preserve cookie values, attributes, and source-site information. Source URLs omit query strings and fragments. The extension does not inject page scripts, intercept network requests, or execute imported text. It does not upload favorites or sync them to a server.
-
-Cookies may contain login credentials. Use the extension only with websites and accounts you are authorized to access. Never include real cookies, tokens, account details, or private URLs in issues, pull requests, or screenshots.
+- **Secure cookies require an authorized HTTPS target.** HTTP targets, including localhost, are rejected before writing.
+- Cross-site application defaults to the target host and path `/`, preserving values and security attributes. Matching names, domains, and paths are overwritten; conflicts with other paths or parent domains require confirmation. Cookies are not isolated by port or tab, and parent-domain cookies may affect subdomains.
+- A batch failure stops remaining writes and prevents refresh; completed writes are not rolled back. Successful writes do not guarantee login, and extending expiry cannot restore server-invalidated credentials.
+- Only regular windows and unpartitioned cookies are supported. Limits: 200 cookies per favorite/application, 200 favorites, and 1 MB per import.
+- Website access is requested as needed and can be removed in settings. Favorites are stored locally **without encryption** and are deleted on uninstall. Restarting Chrome, reloading, or updating the extension clears the temporary buffer.
+- Only use websites and accounts you are authorized to access. Remove real cookies, tokens, and private URLs before sharing screenshots, files, or feedback.
 
 ## Development
 
+Built with Vue 3, TypeScript, Vite, and CRXJS. After installing dependencies:
+
 ```sh
-npm ci
-npm run dev
+npm run dev    # Dev server: 127.0.0.1:5174; load dist while running
 ```
 
-Load `dist` while the development server is running. CRXJS uses `127.0.0.1:5174` and supports Vue hot updates. Reload the extension manually after manifest or permission changes. Before distributing a build, stop the development server and run `npm run build`.
+Vue pages support hot updates. Reload the extension after manifest or permission changes. Stop the dev server and run `npm run build` before distributing the extension.
 
-| Command | Purpose |
+### Current architecture
+
+The recent refactor migrates the JavaScript entry point, service worker, core logic, and Vite configuration to TypeScript, and splits the UI and business operations previously concentrated in `App.vue` into the modules below. The popup and manager still share components; URL parameters select the view and bind its target tab.
+
+| Module | Responsibility |
 | --- | --- |
-| `npm run dev` | Start the extension development server. |
-| `npm test` | Run the Node.js core and background tests. |
-| `npm run build` | Build the production extension into `dist`. |
-| `npm run check` | Run tests and the production build. |
+| [App.vue](src/App.vue) | Page composition, coordination across modules, busy state, notifications, and operation results. |
+| [Business panels](src/components/) | `CookiesPanel.vue` owns the list, selection, and value visibility; `FavoritesPanel.vue` displays favorites; `SettingsPanel.vue` displays settings and permissions. Props supply data and events submit actions. |
+| [CookieDialog.vue](src/components/CookieDialog.vue) / [CookieEditor.vue](src/components/CookieEditor.vue) | The dialog owns independent drafts, import previews, and application selection; the editor provides cookie attribute fields. Events report parsing state and errors; a feedback slot renders notifications. Starting an import clears the previous preview, and parsing blocks submission. |
+| [Composables](src/composables/) | `useTargetSite` handles target binding, authorization, and reads; `useFavorites` handles saving, deletion, and source previews; `useSettings` handles refresh preferences and permission removal. |
+| [extension.ts](src/extension.ts) / [types.ts](src/types.ts) | Centralized message calls and error handling, with shared cookie, favorite, operation, and request/response types. Vue reactive data is converted to plain data before sending. |
+| [background.ts](src/background.ts) / [core.ts](core.ts) | The service worker owns Chrome cookie APIs, target and permission checks, serialized operations, and storage. The core module provides runtime validation, import parsing, attribute mapping, conflict detection, and batch execution rules. |
 
-### Browser smoke tests
+Cookie reads and writes follow component events → `App.vue` / composables → `extension.ts` → service worker, with `core.ts` rules shared by the UI and worker. The worker verifies writes by reading them back and saves per-item results; the UI reloads state. Website authorization requests remain in the user-click call chain. Favorites and preferences use `chrome.storage.local`; the temporary buffer and latest operation use `chrome.storage.session`. The UI subscribes to stored operation changes.
+
+The build entry point is `src/main.ts`, configuration is in `vite.config.ts`, and shared styles remain in `src/style.css`. `tsconfig.json` enables strict checking of Vue scripts/templates, the worker, and core modules. TypeScript is pinned to 5.9.3. `npm test` compiles through `tsconfig.test.json` into the ignored `.test-build/` directory before running core, background, and composable tests with Node's test runner; native Node TypeScript support is unnecessary. `npm run check` runs type checking, unit tests, and the production build in order.
+
+## Validation
+
+```sh
+npm run check     # Type checking, unit tests, and production build
+# Or run separately:
+npm run typecheck
+npm test
+npm run build
+```
 
 The optional browser suite uses an existing Playwright installation and a Chrome build supporting DevTools `Extensions.loadUnpacked`:
 
 ```sh
-npm run build
 PLAYWRIGHT_MODULE=/absolute/path/to/playwright \
 CHROME_PATH='/absolute/path/to/chrome' \
 node tests/browser-smoke.mjs
@@ -122,21 +112,11 @@ node tests/browser-smoke.mjs
 
 The suite launches an isolated browser profile and temporary HTTP sites, using fictional cookie values. It preauthorizes localhost and 127.0.0.1 only in a test extension copy, leaves the production manifest unchanged, and writes artifacts to the ignored `test-results/` directory. It closes and cleans up the test environment when finished.
 
-First-time native permission prompts and real application login acceptance still need manual verification. No separate lint or TypeScript check is configured; production builds validate Vue templates.
+Use test accounts you are authorized to access. Successful cookie writes do not guarantee that the application accepts the credentials or logs you in.
 
-### Project structure
+First-time native permission prompts and real application login acceptance still need manual verification. Strict TypeScript checking covers Vue scripts/templates, shared types, the service worker, core logic, and Vite configuration. No separate lint command is configured.
 
-| Path | Responsibility |
-| --- | --- |
-| `manifest.json`, `vite.config.js` | MV3 permissions and Vue/CRXJS build configuration. |
-| `src/App.vue`, `src/style.css` | Popup and manager UI, shared actions, and responsive layout. |
-| `src/components/CookieEditor.vue` | Cookie attribute editor. |
-| `src/background.js` | Chrome APIs, serialized writes, favorites, and persisted results. |
-| `core.mjs` | Validation, imports, attribute mapping, conflicts, and batch execution. |
-| `tests/` | Core, background, and browser smoke tests. |
-| `assets/logo/`, `docs/design.md` | Icons and visual design documentation. |
-
-## Contributing
+## Contributing and feedback
 
 Bug reports and focused pull requests are welcome. [Open an issue](https://github.com/fanglinwei/cookie-bridge/issues) with your Chrome/Node.js versions, reproduction steps, expected behavior, and sanitized examples.
 
@@ -145,6 +125,8 @@ Bug reports and focused pull requests are welcome. [Open an issue](https://githu
 3. Run `npm run check`. For Chrome API or UI changes, run the browser suite and manually check first-time authorization.
 4. Open a pull request describing the problem, change, and verification. Include screenshots for UI changes.
 
+Do not include real cookies, tokens, account details, or private URLs in issues, pull requests, screenshots, or examples. Cookies may contain login credentials, and favorites are stored without encryption. Only use websites and accounts you are authorized to access.
+
 ## License
 
-[MIT](LICENSE) © 2026 Fun (fanglinwei). Third-party dependencies remain subject to their respective licenses.
+[MIT License](LICENSE) © 2026 Fun (fanglinwei).

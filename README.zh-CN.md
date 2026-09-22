@@ -2,92 +2,98 @@
 
 [English](README.md) | 简体中文
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+Vue 3 + TypeScript + Vite + CRXJS 构建的 Chrome Manifest V3 Cookie 管理插件。在 A 网站选取任意 Cookie，临时复制或保存为收藏，再应用到当前 B 网站，适合开发环境切换账号、复用登录配置。界面为中文，数据保存在本机，无站点配对、无固定 Cookie 名称、无后端、无云同步。
 
 ![Cookie Bridge 管理页](docs/screenshots/manager-desktop.png)
 
 视觉规范与品牌配色见 [设计文档](docs/design.md)。
 
-Vue 3 + Vite + CRXJS 构建的 Chrome Manifest V3 Cookie 管理插件。在 A 网站选取任意 Cookie，临时复制或保存为收藏，再应用到当前 B 网站。无站点配对、无固定 Cookie 名称、无后端、无云同步。
+## 安装
 
-## 安装与开发
-
-需要 Chrome 120+，以及 Node.js 20.19+（20.x）或 22.12+；建议使用 Node 24。界面目前为中文。以下是从源码构建并加载扩展的安装方式。
+需要 **Chrome 120+**，以及 **Node.js 20.19+（20.x）或 22.12+**。
 
 ```sh
 git clone https://github.com/fanglinwei/cookie-bridge.git
 cd cookie-bridge
 npm ci
-npm run check
+npm run build
 ```
 
-在 Chrome 扩展管理页面启用“开发者模式”，点击“加载已解压的扩展程序”，选择 **`cookie-bridge/dist`**，然后固定插件图标。
+1. 在 Chrome 打开 `chrome://extensions`，开启“开发者模式”。
+2. 点击“加载已解压的扩展程序”，选择 **`cookie-bridge/dist`**（不是源码根目录）。
+3. 将 Cookie Bridge 固定到工具栏。
 
-日常开发：
+更新源码后，重新运行 `npm run build`，再在扩展管理页点击“重新加载”。
 
-```sh
-npm run dev
-```
+## 使用
 
-CRXJS 开发服务固定使用 `127.0.0.1:5174`，避开常用业务项目的 5173。开发服务运行时加载生成的 `dist`；Vue 页面修改支持热更新。Manifest 或权限变更后在扩展管理页面手动重新加载。分发前停止开发服务并重新执行 `npm run build`，不要分发开发模式产物。
+### 复制到另一个网站
 
-## 操作流程
+1. 打开来源网站，点击插件图标，首次使用点击“授权当前网站”。
+2. 勾选 Cookie，点击“复制选中项”；需要长期保存时，点击“收藏选中项”并命名。
+3. 打开目标网站，点击插件图标并授权。
+4. 点击“应用已复制项”，或收藏的“应用到当前站”。需要仅应用部分项或调整属性、路径时，先打开“选项 / 应用选项”，全选或逐项勾选；未选项仍保留在临时区或收藏中。
+5. 按提示处理冲突并确认。全部写入且回读验证通过后，默认刷新目标标签页，可在设置中关闭刷新。
 
-1. 在来源网站打开插件，首次使用点击“授权当前网站”。
-2. 勾选需要的 Cookie，点击“复制选中项”；或点击“收藏选中项”，命名为一个账号配置。
-3. 切换到目标网站，打开插件并授权。
-4. 点击“应用已复制项”或收藏的“应用到当前站”。全部写入且回读验证通过后默认刷新目标标签页。
-5. 高级属性或路径需要调整时，使用“选项 / 应用选项”。已过期或不兼容的 Cookie 会提示处理，不能靠延长 Cookie 到期时间让服务端失效的 token 复活。
+### 查看、编辑与收藏
 
-“复制值 / 复制文本”写入系统剪贴板；“复制选中项”只保存到插件内部临时区。
+- Cookie 值默认显示，点击值可复制完整内容到系统剪贴板，眼睛图标可隐藏或显示值；“复制选中项”使用插件内部临时区。
+- 管理页支持编辑、删除 Cookie，也可直接切换 **HttpOnly / Secure**；开关写入并验证后更新显示，不刷新网站。
+- 收藏是固定快照。需要更新时，在来源网站使用“从来源更新”，检查预览后保存。
+- 管理页绑定打开它的标签页。地址变化后需“重新绑定”；标签页关闭时，从目标网站重新打开插件。直接从扩展设置打开的管理页可管理收藏和导入，读写网站请从对应网站的插件弹窗进入。
 
-管理页绑定打开它的目标标签页。目标关闭或 URL 发生变化后，执行会停止；点击“重新绑定”明确采用该标签页的新地址。通过扩展设置直接打开、没有绑定目标的管理页仍可管理收藏及导入，读写网站需要从该网站的插件弹窗进入。
+### 导入
 
-## Cookie 规则
-
-- 收藏保留名称、值、域、路径、有效期、Secure、HttpOnly、SameSite 及来源网站信息。来源 URL 不保存查询参数与 fragment。
-- 跨站默认映射到目标主机、路径 `/`，保留值及安全属性；不把来源域带入目标站。
-- 相同名称、域、路径的项会被覆盖，其他 Cookie 保留。同名不同路径或父域冲突会列出来，明确选择保留或删除后才继续。
-- 清理列出具体项并再次确认；父域 Cookie 可能影响其他子域。
-- Cookie 不按端口或标签页隔离，多个 localhost 项目可能共享名称与路径相同的 Cookie。
-- 一组写入不具备事务原子性。失败后停止后续项、不刷新、保留逐项结果；没有自动回滚。
-- 编辑名称、域或路径时，先写入新项并验证，再删除原项；删除失败会明确报告部分完成。
-- 收藏是固定快照。在来源站点使用“从来源更新”，预览后保存；缺少任何原收藏项时不覆盖旧快照。
-- 首版支持普通窗口、未分区 Cookie。无痕和分区 Cookie 不进入操作范围。输入名称和值按 Cookie 文本规则校验，不自动转码。
-
-## 数据与权限
-
-必需权限为 `cookies`、`storage`、`activeTab`；HTTP/HTTPS 主机权限按需申请。设置页可查看及移除已授权网站。不注入网页脚本，不拦截网络请求，不执行网页或导入文本中的代码。
-
-收藏和偏好使用 `chrome.storage.local`，临时复制使用 `chrome.storage.session`。存储仅向扩展可信上下文开放。收藏不自动上传，也不加密；卸载扩展会删除本机收藏。浏览器重启、扩展重载或更新会清除临时复制。
-
-每份收藏 / 每次应用最多 200 项，最多 200 份收藏；导入上限 1 MB。Cookie 名称和值合计最多 4096 字节，Chrome 仍可能因属性长度或域规则拒绝写入。
-
-## 导入
-
-支持单行 Cookie 请求头的值：
+粘贴 Cookie 请求头的值，或使用 [JSON 示例](examples/cookies.json) 的格式：
 
 ```text
 demo_session=example==; theme=dark
 ```
 
-以及版本化 JSON。可参考 `examples/cookies.json`，文件仅含虚构演示值。JSON 缺少来源时标记“外部导入 / 来源未知”。只解析预览不会修改网站；需要再次点击应用或保存收藏。不承诺兼容其他插件的私有导出格式。
+解析后检查预览，再选择应用或保存收藏；仅解析不会修改网站。不保证兼容其他插件的私有导出格式。
 
-## 代码结构
+## 必要提示
 
-| 文件 | 职责 |
+- **Secure Cookie 必须写入已授权的 HTTPS 网站**；HTTP（包括 localhost）会在写入前被拒绝。
+- 跨站应用默认使用目标主机和路径 `/`，保留值及安全属性；相同名称、域、路径的 Cookie 会被覆盖，其他路径或父域冲突需确认。Cookie 不按端口或标签页隔离，父域 Cookie 也可能影响子域。
+- 批量写入失败会停止后续项、不刷新，已写入项不会自动回滚。写入成功不代表登录成功，延长到期时间不能恢复服务端已失效的凭据。
+- 仅支持普通窗口、未分区 Cookie。每份收藏 / 每次应用最多 200 项，最多 200 份收藏，导入上限 1 MB。
+- 网站权限按需申请，可在设置中移除。收藏仅保存在本机，**未加密**，卸载扩展会删除；浏览器重启、扩展重载或更新会清空临时复制区。
+- 仅操作有权访问的网站和账号；分享截图、文件或反馈时，请移除真实 Cookie、token 和私有站点信息。
+
+## 开发
+
+基于 Vue 3、TypeScript、Vite 和 CRXJS；安装依赖后运行：
+
+```sh
+npm run dev    # 开发服务：127.0.0.1:5174，运行期间加载 dist
+```
+
+Vue 页面支持热更新；修改 Manifest 或权限后需手动重新加载扩展。分发前停止开发服务并运行 `npm run build`。
+
+### 当前架构
+
+最近的重构将 JavaScript 入口、后台、核心逻辑和 Vite 配置迁移到 TypeScript，并将原先集中在 `App.vue` 的界面与业务操作拆分如下。弹窗和管理页仍共用同一套组件，通过 URL 参数选择视图及绑定目标标签页。
+
+| 模块 | 职责 |
 | --- | --- |
-| `manifest.json`、`vite.config.js` | MV3 权限、Vue/CRXJS 构建 |
-| `src/App.vue`、`src/style.css` | 弹窗及管理页，共用操作和响应式布局 |
-| `src/components/CookieEditor.vue` | 属性编辑表单 |
-| `src/background.js` | Chrome API、串行写入、收藏及结果持久化 |
-| `core.mjs` | 输入校验、导入、属性转换、冲突及批量执行逻辑 |
-| `tests/core.test.mjs`、`tests/background.test.mjs` | 解析、属性转换、失败处理、授权及后台消息测试 |
-| `tests/browser-smoke.mjs` | 隔离 Chrome 中的真实 API 和 Vue UI 冒烟测试 |
+| [App.vue](src/App.vue) | 页面组装、跨模块操作协调、忙碌状态、通知和操作结果展示。 |
+| [业务面板](src/components/) | `CookiesPanel.vue` 管理列表、选择和显隐；`FavoritesPanel.vue` 展示收藏；`SettingsPanel.vue` 展示设置与授权。通过 props 接收数据、事件提交操作。 |
+| [CookieDialog.vue](src/components/CookieDialog.vue) / [CookieEditor.vue](src/components/CookieEditor.vue) | 对话框持有独立草稿、导入预览和应用选择；编辑器负责 Cookie 属性表单。解析状态和错误通过事件上报，通知通过反馈 slot 渲染。新导入开始时清空旧预览，解析期间禁止提交。 |
+| [组合函数](src/composables/) | `useTargetSite` 管理目标绑定、授权与读取；`useFavorites` 处理收藏保存、删除和来源预览；`useSettings` 处理刷新偏好与撤销授权。 |
+| [extension.ts](src/extension.ts) / [types.ts](src/types.ts) | 统一消息调用与错误处理，共享 Cookie、收藏、操作结果及请求/响应类型；发送前将 Vue 响应式数据转换为普通数据。 |
+| [background.ts](src/background.ts) / [core.ts](core.ts) | 后台负责 Chrome Cookie API、目标与权限复核、串行操作和存储；核心模块提供运行时校验、导入解析、属性映射、冲突检测及批量执行规则。 |
+
+Cookie 读写经由“组件事件 → `App.vue` / 组合函数 → `extension.ts` → 后台”执行，前台与后台共用 `core.ts` 规则。后台写入后回读验证并保存逐项结果，界面重新读取状态；网站授权请求保留在用户点击触发的调用链中。收藏和偏好存入 `chrome.storage.local`，临时复制与最近操作结果存入 `chrome.storage.session`，界面监听操作结果的存储变化。
+
+构建入口为 `src/main.ts`，配置为 `vite.config.ts`，共用样式仍在 `src/style.css`。`tsconfig.json` 启用严格类型检查，覆盖 Vue 脚本与模板、后台及核心模块。TypeScript 固定为 5.9.3；`npm test` 先按 `tsconfig.test.json` 编译到已忽略的 `.test-build/`，再由 Node 测试运行器执行核心、后台和组合函数测试，无需 Node 原生支持 TypeScript。`npm run check` 依次执行类型检查、单元测试和生产构建。
 
 ## 校验
 
 ```sh
+npm run check     # 类型检查、单元测试和生产构建
+# 也可分别运行：
+npm run typecheck
 npm test
 npm run build
 ```
@@ -117,4 +123,4 @@ node tests/browser-smoke.mjs
 
 ## 许可证
 
-本项目采用 [MIT License](LICENSE)，Copyright (c) 2026 Fun (fanglinwei)。第三方依赖遵循各自的许可证。
+[MIT License](LICENSE) © 2026 Fun (fanglinwei)。

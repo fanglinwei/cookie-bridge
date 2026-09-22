@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { parseImport, validateCookies, prepareCookies, identity, inScope, conflicts, applyBatch } from '../core.mjs';
+import { parseImport, validateCookies, prepareCookies, identity, inScope, conflicts, applyBatch, isOperation } from '../.test-build/core.js';
 
 const target = { url: 'http://localhost:5173/app/', storeId: '0' };
 const sample = (name = 'demo') => ({ name, value: 'fixture-only', domain: 'source.example', path: '/', secure: false, httpOnly: false, sameSite: 'lax', session: true });
@@ -38,6 +38,7 @@ test('mapping rejects collapsed identities, expired cookies and incompatible sec
   assert.throws(() => prepareCookies([sample(), { ...sample(), path: '/other' }], target));
   assert.throws(() => prepareCookies([{ ...sample(), expirationDate: 1, session: false }], target));
   assert.throws(() => prepareCookies([{ ...sample(), secure: true }], { ...target, url: 'http://dev.example/' }));
+  assert.throws(() => prepareCookies([{ ...sample(), secure: true }], target));
   assert.throws(() => prepareCookies([{ ...sample(), sameSite: 'no_restriction' }], target));
   assert.throws(() => prepareCookies([sample('__Host-demo')], target));
 });
@@ -74,4 +75,13 @@ test('navigation and failed readback halt further writes', async () => {
   await assert.rejects(() => applyBatch(prepareCookies([sample()], target), {
     checkTarget: async () => { throw Error('目标已变化'); }, write: async () => assert.fail(), verify: async () => true, progress: async () => {},
   }));
+});
+
+test('operation storage guard accepts valid progress and rejects malformed records', () => {
+  const operation = { id: 'test', type: 'apply', source: { origin: 'https://example.com', path: '/' }, status: 'running', startedAt: 1, rows: [{ name: 'demo', path: '/', status: 'pending' }] };
+  assert.equal(isOperation(operation), true);
+  assert.equal(isOperation({ ...operation, status: 'success', finishedAt: 2, refreshed: true, rows: [{ name: 'demo', path: '/', status: 'success' }] }), true);
+  for (const value of [null, {}, { ...operation, source: null }, { ...operation, status: 'unknown' }, { ...operation, rows: [null] }, { ...operation, rows: [{ name: 'demo', path: '/', status: 'unknown' }] }, { ...operation, refreshed: 'yes' }]) {
+    assert.equal(isOperation(value), false);
+  }
 });
