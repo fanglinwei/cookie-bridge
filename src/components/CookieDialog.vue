@@ -51,8 +51,8 @@ const applySelection = computed(() => {
 const expiry = (cookie: Cookie) => cookie.session || cookie.expirationDate === undefined ? '会话' : new Date(cookie.expirationDate * 1000).toLocaleString();
 
 watch(() => props.modelValue, async value => {
-  if (!value) modal.value = null;
-  else {
+  // Keep the last draft rendered while the native dialog finishes its exit transition.
+  if (value) {
     const draft = clone(value);
     if (draft.type === 'apply') {
       const cookies = draft.cookies.map(cookie => ({ ...cookie, editorId: cookie.editorId || crypto.randomUUID() }));
@@ -64,8 +64,8 @@ watch(() => props.modelValue, async value => {
   }
   await nextTick();
   if (!dialog.value) return;
-  if (modal.value && !dialog.value.open) dialog.value.showModal();
-  else if (!modal.value && dialog.value.open) dialog.value.close();
+  if (props.modelValue && !dialog.value.open) dialog.value.showModal();
+  else if (!props.modelValue && dialog.value.open) dialog.value.close();
 });
 
 function closeModal() { if (!locked.value) emit('close'); }
@@ -129,9 +129,10 @@ function submit() {
 <template>
   <dialog
     ref="dialog"
+    :inert="!modelValue"
     aria-labelledby="dialog-title"
     @cancel="locked ? $event.preventDefault() : closeModal()"
-    @close="emit('close')"
+    @close="!dialog?.open && emit('close')"
   >
     <form v-if="modal" @submit.prevent="submit">
       <div class="dialog-header">
@@ -284,7 +285,7 @@ function submit() {
       </div>
     </form>
   </dialog>
-  <Teleport :to="modal && dialog ? dialog : 'body'">
+  <Teleport :to="modelValue && dialog ? dialog : 'body'">
     <slot name="feedback" />
   </Teleport>
 </template>
