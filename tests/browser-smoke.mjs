@@ -44,7 +44,7 @@ async function checkImportReplacement(view) {
         await panel.evaluate(() => window.rejectFileRead());
       }
       const message = failure === 'malformed' ? 'JSON 格式错误' : failure === 'oversized' ? '不得超过 1 MB' : '测试文件读取失败';
-      await dialog.locator(view === 'manager' ? '.toast-error' : '.notice.error').filter({ hasText: message }).waitFor();
+      await dialog.locator('.notice.error').filter({ hasText: message }).waitFor();
       assert.equal(await dialog.locator('.import-preview').count(), 0, `${view}: ${failure} must discard the previous preview`);
       assert.equal(await dialog.getByRole('button', { name: '应用到当前站', exact: true }).count(), 0);
       assert.equal(await dialog.getByRole('button', { name: '保存为收藏', exact: true }).count(), 0);
@@ -158,14 +158,28 @@ try {
   await panel.getByText('已复制 2 项', { exact: true }).waitFor();
   await panel.getByRole('button', { name: '收藏选中项' }).click();
   await panel.getByLabel('收藏名称').fill('测试管理员');
+  await panel.evaluate(() => {
+    const send = chrome.runtime.sendMessage.bind(chrome.runtime);
+    chrome.runtime.sendMessage = async message => {
+      if (message.action === 'saveFavorite') {
+        chrome.runtime.sendMessage = send;
+        return { ok: false, error: '测试收藏保存失败' };
+      }
+      return send(message);
+    };
+  });
+  await panel.getByRole('button', { name: '保存', exact: true }).click();
+  await panel.locator('dialog [data-sonner-toast][data-type="error"]').filter({ hasText: '测试收藏保存失败' }).waitFor();
+  assert.equal(await panel.getByLabel('收藏名称').inputValue(), '测试管理员');
   await panel.getByRole('button', { name: '保存', exact: true }).click();
   await panel.getByText('收藏已保存', { exact: true }).waitFor();
-  assert.equal(await panel.locator('.toast').evaluate(element => getComputedStyle(element).position), 'fixed');
-  assert.equal(await panel.locator('.toast').evaluate(element => getComputedStyle(element).color), 'rgb(103, 194, 58)');
+  assert.equal(await panel.locator('[data-sonner-toaster]').evaluate(element => getComputedStyle(element).position), 'fixed');
+  assert.equal(await panel.locator('[data-sonner-toast][data-type="success"]').count(), 1);
   assert.equal(await panel.locator('.shell > .notice').count(), 0);
   await panel.waitForFunction(() => {
-    const toast = document.querySelector('.toast');
-    return toast && getComputedStyle(toast).opacity === '1' && !toast.classList.contains('toast-slide-enter-active');
+    const toast = document.querySelector('[data-sonner-toast]');
+    const dialog = document.querySelector('dialog');
+    return toast && getComputedStyle(toast).opacity === '1' && getComputedStyle(dialog).opacity === '0';
   });
   await panel.screenshot({ path: join(output, 'manager-toast.png') });
   await panel.getByText('收藏已保存', { exact: true }).waitFor({ state: 'hidden', timeout: 4500 });
@@ -182,7 +196,7 @@ try {
   });
   await panel.getByRole('button', { name: '刷新', exact: true }).click();
   assert.equal(await panel.getByRole('button', { name: '刷新', exact: true }).isDisabled(), true);
-  assert.equal(await panel.locator('.toast').count(), 0);
+  assert.equal(await panel.locator('[data-sonner-toast]').count(), 0);
   await panel.waitForFunction(() => ![...document.querySelectorAll('button')].find(button => button.textContent.trim() === '刷新').disabled);
   // Simulate a partial result without changing cookies to exercise warning feedback.
   await panel.evaluate(() => {
@@ -196,12 +210,9 @@ try {
     };
   });
   await panel.getByRole('button', { name: '应用已复制项', exact: true }).click();
-  await panel.locator('.toast-warning').waitFor();
-  assert.equal(await panel.locator('.toast-warning').evaluate(element => getComputedStyle(element).color), 'rgb(230, 162, 60)');
-  assert.equal(await panel.locator('.toast button').count(), 0);
-  await panel.waitForFunction(() => document.querySelector('.toast-slide-leave-active'), null, { polling: 'raf', timeout: 8000 });
-  assert.equal(await panel.locator('.toast').evaluate(element => getComputedStyle(element).transitionDuration), '0.3s, 0.3s');
-  await panel.locator('.toast').waitFor({ state: 'detached' });
+  await panel.locator('[data-sonner-toast][data-type="warning"]').waitFor();
+  assert.equal(await panel.locator('[data-sonner-toast] button').count(), 0);
+  await panel.locator('[data-sonner-toast]').waitFor({ state: 'detached', timeout: 8000 });
   passed('manager feedback uses non-blocking toast with automatic dismissal');
   passed('source selection, HttpOnly read, temporary copy and named favorite');
 
@@ -313,11 +324,10 @@ try {
   await panel.getByLabel('Cookie 文本或 JSON').fill('a=one; a=two');
   await panel.getByRole('button', { name: '解析并预览' }).click();
   await panel.getByRole('alert').filter({ hasText: '重复' }).waitFor();
-  assert.equal(await panel.locator('dialog .toast[role="alert"]').count(), 1);
-  assert.equal(await panel.locator('.toast-error').evaluate(element => getComputedStyle(element).color), 'rgb(245, 108, 108)');
+  assert.equal(await panel.locator('dialog .notice.error[role="alert"]').count(), 1);
+  assert.equal(await panel.locator('[data-sonner-toast][data-type="error"]').count(), 0);
   await panel.emulateMedia({ reducedMotion: 'reduce' });
-  assert.equal(await panel.locator('.toast button').count(), 0);
-  await panel.locator('.toast').waitFor({ state: 'detached' });
+  assert.equal(await panel.locator('dialog .notice.error').count(), 1);
   await panel.emulateMedia({ reducedMotion: 'no-preference' });
   await panel.getByLabel('Cookie 文本或 JSON').fill('imported=fixture==; empty=');
   await panel.getByRole('button', { name: '解析并预览' }).click();
@@ -452,7 +462,7 @@ try {
     };
   });
   await panel.getByLabel('应用成功后刷新目标页', { exact: false }).click();
-  await panel.getByRole('alert').filter({ hasText: '测试设置保存失败' }).waitFor();
+  await panel.locator('[data-sonner-toast][data-type="error"]').filter({ hasText: '测试设置保存失败' }).waitFor();
   assert.equal(await panel.getByLabel('应用成功后刷新目标页', { exact: false }).isChecked(), true);
   assert.equal((await send('state')).settings.autoRefresh, true);
   await panel.getByLabel('应用成功后刷新目标页', { exact: false }).click();
@@ -485,13 +495,40 @@ try {
   await panel.getByText('已复制到系统剪贴板', { exact: true }).waitFor();
   assert.equal(await panel.locator('.shell > .notice').count(), 0);
   assert.deepEqual(await panel.locator('.cookie-list').boundingBox(), listBeforeCopy);
-  assert.deepEqual(await panel.locator('.toast-success').evaluate(element => {
+  assert.deepEqual(await panel.locator('[data-sonner-toaster][data-y-position="bottom"][data-x-position="right"]').evaluate(element => {
     const style = getComputedStyle(element);
-    return [style.position, style.right, style.bottom];
-  }), ['fixed', '12px', '12px']);
-  await panel.waitForFunction(() => !document.querySelector('.toast-slide-enter-active'));
+    return [style.position, parseFloat(style.right) > 0, parseFloat(style.bottom) > 0];
+  }), ['fixed', true, true]);
+  await panel.waitForFunction(() => {
+    const toast = document.querySelector('[data-sonner-toast][data-type="success"]');
+    if (!toast || getComputedStyle(toast).opacity !== '1') return false;
+    const rect = toast.getBoundingClientRect();
+    return rect.top >= 0 && rect.bottom <= innerHeight;
+  });
+  assert.deepEqual(await panel.locator('[data-sonner-toast][data-type="success"]').evaluate(element => {
+    const rect = element.getBoundingClientRect();
+    return [rect.width < 356, innerWidth - rect.right <= 32];
+  }), [true, true]);
   await panel.screenshot({ path: join(output, 'popup-success-toast.png') });
-  await panel.locator('.toast').waitFor({ state: 'detached', timeout: 4500 });
+  await panel.locator('[data-sonner-toast]').waitFor({ state: 'detached', timeout: 4500 });
+  await panel.evaluate(() => {
+    const send = chrome.runtime.sendMessage.bind(chrome.runtime);
+    chrome.runtime.sendMessage = async message => {
+      if (message.action === 'state') {
+        chrome.runtime.sendMessage = send;
+        return { ok: false, error: '测试错误：当前网站的 Cookie 操作没有完成，请检查网站授权和目标标签页后重新尝试。' };
+      }
+      return send(message);
+    };
+  });
+  await panel.getByRole('button', { name: '刷新', exact: true }).click();
+  const longToast = panel.locator('[data-sonner-toast][data-type="error"]').filter({ hasText: '测试错误：当前网站' });
+  await longToast.waitFor();
+  assert.deepEqual(await longToast.evaluate(element => {
+    const rect = element.getBoundingClientRect();
+    return [Math.round(rect.width), rect.height > 60, innerWidth - rect.right <= 32];
+  }), [356, true, true]);
+  passed('popup long feedback wraps at the 356px maximum');
   await panel.getByRole('button', { name: '隐藏 demo_access 的值', exact: true }).click();
   assert.equal(await popupValue.textContent(), '••••••••••••••••');
   await popupValue.focus();
@@ -501,8 +538,8 @@ try {
   await panel.getByRole('button', { name: '显示 demo_access 的值', exact: true }).click();
   await panel.evaluate(() => { navigator.clipboard.writeText = async () => { throw Error('Synthetic clipboard failure'); }; });
   await popupValue.click();
-  await panel.locator('.notice.error').filter({ hasText: '浏览器未允许写入剪贴板' }).waitFor();
-  await panel.locator('.toast').waitFor({ state: 'detached' });
+  await panel.locator('[data-sonner-toast][data-type="error"]').filter({ hasText: '浏览器未允许写入剪贴板' }).waitFor();
+  await panel.locator('[data-sonner-toast]').waitFor({ state: 'detached' });
   await panel.evaluate(() => {
     navigator.clipboard.writeText = window.originalWriteText;
     const send = chrome.runtime.sendMessage.bind(chrome.runtime);
@@ -515,9 +552,9 @@ try {
     };
   });
   await panel.getByRole('button', { name: '应用已复制项', exact: true }).click();
-  await panel.locator('.notice').filter({ hasText: '操作未全部完成' }).waitFor();
-  assert.equal(await panel.locator('.toast').count(), 0);
-  passed('popup success toast stays bottom-right without reflow; errors and warnings remain inline');
+  await panel.locator('[data-sonner-toast][data-type="warning"]').filter({ hasText: '操作未全部完成' }).waitFor();
+  assert.equal(await panel.locator('.shell > .notice').count(), 0);
+  passed('popup success, error and warning feedback uses Sonner without reflow');
   await panel.getByRole('button', { name: '刷新', exact: true }).click();
   await panel.waitForFunction(() => document.querySelector('.shell').getAttribute('aria-busy') === 'false');
   passed('popup inline values support full-value copy and visibility toggle without metadata or copy buttons');

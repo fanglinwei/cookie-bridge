@@ -39,6 +39,7 @@ const emit = defineEmits<{
   clearError: [];
 }>();
 const dialog = ref<HTMLDialogElement | null>(null);
+const feedbackTarget = ref<HTMLDialogElement | 'body'>('body');
 const modal = ref<DialogDraft | null>(null);
 const parsing = ref(false);
 const locked = computed(() => props.busy || parsing.value);
@@ -64,9 +65,21 @@ watch(() => props.modelValue, async value => {
   }
   await nextTick();
   if (!dialog.value) return;
-  if (props.modelValue && !dialog.value.open) dialog.value.showModal();
-  else if (!props.modelValue && dialog.value.open) dialog.value.close();
+  if (props.modelValue && !dialog.value.open) {
+    dialog.value.showModal();
+    feedbackTarget.value = dialog.value;
+  } else if (!props.modelValue && dialog.value.open) {
+    dialog.value.close();
+    if (matchMedia('(prefers-reduced-motion: reduce)').matches) feedbackTarget.value = 'body';
+  }
 });
+
+function finishClosing(event: TransitionEvent) {
+  const element = dialog.value;
+  if (element && event.target === element && event.propertyName === 'opacity' && !element.open && getComputedStyle(element).opacity === '0') {
+    feedbackTarget.value = 'body';
+  }
+}
 
 function closeModal() { if (!locked.value) emit('close'); }
 function changeApplySelection(ids: string[]) {
@@ -133,13 +146,14 @@ function submit() {
     aria-labelledby="dialog-title"
     @cancel="locked ? $event.preventDefault() : closeModal()"
     @close="!dialog?.open && emit('close')"
+    @transitionend="finishClosing"
   >
     <form v-if="modal" @submit.prevent="submit">
       <div class="dialog-header">
         <h2 id="dialog-title">{{ modal.title }}</h2>
         <button type="button" class="quiet" :disabled="locked" aria-label="关闭对话框" @click="closeModal">✕</button>
       </div>
-      <div v-if="error && !manager" class="notice error" role="alert">{{ error }}</div>
+      <div v-if="error" class="notice error" role="alert">{{ error }}</div>
       <fieldset :disabled="locked" class="dialog-content">
         <template v-if="modal.type === 'edit'">
           <p class="muted">目标：{{ origin }}。保存后不自动刷新。</p>
@@ -285,7 +299,7 @@ function submit() {
       </div>
     </form>
   </dialog>
-  <Teleport :to="modelValue && dialog ? dialog : 'body'">
+  <Teleport :to="feedbackTarget">
     <slot name="feedback" />
   </Teleport>
 </template>

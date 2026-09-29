@@ -260,61 +260,6 @@ button,code,strong {
   margin:6px 0;
 }
 
-.toast {
-  position:fixed;
-  top:20px;
-  left:50%;
-  transform:translateX(-50%);
-  z-index:1000;
-  display:flex;
-  align-items:center;
-  gap:9px;
-  width:max-content;
-  max-width:calc(100vw - 32px);
-  padding:9px 12px;
-  border:1px solid var(--line);
-  border-radius:8px;
-  background:white;
-  color:#25304a;
-  box-shadow:0 4px 18px #1824441a;
-  font-size:13px;
-  overflow-wrap:anywhere;
-}
-
-.toast > span:first-child {
-  flex-shrink:0;
-  font-weight:700;
-}
-
-.toast-success {
-  color:#67c23a;
-  background:#f0f9eb;
-  border-color:#e1f3d8;
-}
-
-.toast-error {
-  color:#f56c6c;
-  background:#fef0f0;
-  border-color:#fde2e2;
-}
-
-.toast-warning {
-  color:#e6a23c;
-  background:#fdf6ec;
-  border-color:#faecd8;
-}
-
-.toast-slide-enter-active,
-.toast-slide-leave-active {
-  transition:opacity .3s ease, transform .3s ease;
-}
-
-.toast-slide-enter-from,
-.toast-slide-leave-to {
-  opacity:0;
-  transform:translate(-50%, -16px);
-}
-
 .clipboard-card {
   border:1px solid #d7c99d;
   border-radius:10px;
@@ -958,6 +903,18 @@ html:not(.manager) body {
   overflow:hidden;
 }
 
+html:not(.manager) [data-sonner-toaster] {
+  left:auto;
+  width:min(var(--width), calc(100vw - 32px));
+}
+
+html:not(.manager) [data-sonner-toaster] [data-sonner-toast] {
+  left:auto;
+  right:0;
+  width:max-content;
+  max-width:100%;
+}
+
 html:not(.manager) #app {
   height:100%;
 }
@@ -1028,13 +985,6 @@ html:not(.manager) .target-card {
 
 .target-details[open] summary {
   margin-bottom:6px;
-}
-
-html:not(.manager) .shell > .notice {
-  margin:4px 0;
-  padding:6px 8px;
-  max-height:48px;
-  overflow:auto;
 }
 
 html:not(.manager) .clipboard-card {
@@ -1123,29 +1073,13 @@ html:not(.manager) .operation {
   overflow:auto;
 }
 
-html:not(.manager) .toast {
-  top:auto;
-  left:auto;
-  right:12px;
-  bottom:12px;
-  max-width:calc(100% - 24px);
-  transform:none;
-}
-
-html:not(.manager) .toast-slide-enter-from,
-html:not(.manager) .toast-slide-leave-to {
-  transform:translateY(8px);
-}
-
 html:not(.manager) .app-footer {
   display:none;
 }
 
 @media(prefers-reduced-motion:reduce) {
   dialog,
-  dialog::backdrop,
-  .toast-slide-enter-active,
-  .toast-slide-leave-active {
+  dialog::backdrop {
     transition:none;
   }
   * {

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, reactive, ref, toRef, watch } from 'vue';
+import { Toaster, toast } from 'vue-sonner';
 import type { Cookie, Favorite, AppState, ApplyInput, Requests } from './types.js';
 import { available, clone, request } from './extension.js';
 import CookiesPanel from './components/CookiesPanel.vue';
@@ -20,26 +21,13 @@ const section = ref('cookies');
 const performing = ref(false);
 const parsing = ref(false);
 const busy = computed(() => performing.value || parsing.value);
-const notice = ref('');
-const noticeType = ref<'success' | 'warning' | 'error'>('success');
-const error = ref('');
 const state = reactive<AppState>({ favorites: [], clipboard: null, settings: { autoRefresh: true }, permissions: [], lastOperation: null });
 const favorites = useFavorites(toRef(state, 'favorites'));
 const settings = useSettings(toRef(state, 'settings'), toRef(state, 'permissions'));
 const modal = ref<DialogInput | null>(null);
 const dialogError = ref('');
-const toastType = computed(() => dialogError.value || error.value ? 'error' : noticeType.value);
-const toastMessage = computed(() => busy.value || (!manager && toastType.value !== 'success') ? '' : (dialogError.value || error.value || notice.value).replace(/。$/, ''));
-let toastTimer: ReturnType<typeof setTimeout> | undefined;
-function dismissToast() {
-  notice.value = ''; error.value = ''; dialogError.value = '';
-}
-watch([toastMessage, busy], () => {
-  clearTimeout(toastTimer);
-  if (toastMessage.value && !busy.value) {
-    toastTimer = setTimeout(dismissToast, toastType.value === 'success' ? 3000 : 6000);
-  }
-});
+const feedback = (message: string, type: 'success' | 'warning' | 'error' = 'success') =>
+  toast[type](message.replace(/。$/, ''), { id: 'feedback', duration: type === 'success' ? 3000 : 6000 });
 
 const operationLabel = computed(() => state.lastOperation ? ({ success: '操作完成', partial: '部分完成，请检查结果', failed: '操作失败', running: '正在执行', interrupted: '操作中断，请核对' })[state.lastOperation.status] : '');
 const when = (time: number) => new Date(time).toLocaleString();
@@ -48,10 +36,9 @@ const safeError = (issue: unknown) => issue instanceof Error && issue.message ||
 async function run(action: () => unknown) {
   if (busy.value) return;
   performing.value = true;
-  noticeType.value = 'success';
-  error.value = ''; notice.value = ''; dialogError.value = '';
+  dialogError.value = '';
   try { await action(); }
-  catch (issue) { if (modal.value) dialogError.value = safeError(issue); else error.value = safeError(issue); }
+  catch (issue) { feedback(safeError(issue), 'error'); }
   finally { performing.value = false; }
 }
 
@@ -60,15 +47,13 @@ function grant() {
   if (!target.value) return;
   run(async () => {
     await grantAccess();
-    await loadState(); notice.value = '网站已授权。';
+    await loadState(); feedback('网站已授权。');
   });
 }
 function setParsing(active: boolean) {
   parsing.value = active;
-  if (active) dismissToast();
 }
 function showDialogError(message: string) {
-  dismissToast();
   dialogError.value = message;
 }
 
@@ -93,11 +78,11 @@ function editFavorite(item: Favorite) { openModal({ ...clone(item), type: 'favor
 async function copySelected(selected: Cookie[]) {
   if (!target.value) return;
   await request('copy', { target: target.value, cookies: selected }); await loadState();
-  notice.value = `已复制 ${selected.length} 项，可切换到其他网站应用。`;
+  feedback(`已复制 ${selected.length} 项，可切换到其他网站应用。`);
 }
 
 async function copyText(text: string) {
-  try { await navigator.clipboard.writeText(text); notice.value = '已复制到系统剪贴板。'; }
+  try { await navigator.clipboard.writeText(text); feedback('已复制到系统剪贴板。'); }
   catch { throw new Error('浏览器未允许写入剪贴板，请重试。'); }
 }
 
@@ -130,18 +115,18 @@ async function apply(item: ApplyInput | null, advanced = false) {
   }
   modal.value = null;
   await loadState();
-  noticeType.value = result.operation.status === 'success' ? 'success' : result.operation.status === 'failed' ? 'error' : 'warning';
-  notice.value = result.operation.status === 'success' ? `Cookie 已${draft.edit ? '保存' : '应用'}${result.operation.refreshed ? '，目标页面已刷新' : ''}。` : '操作未全部完成，请查看逐项结果。';
+  feedback(result.operation.status === 'success' ? `Cookie 已${draft.edit ? '保存' : '应用'}${result.operation.refreshed ? '，目标页面已刷新' : ''}。` : '操作未全部完成，请查看逐项结果。',
+    result.operation.status === 'success' ? 'success' : result.operation.status === 'failed' ? 'error' : 'warning');
   await read();
 }
 
 async function saveFavorite(input: Requests['saveFavorite']) {
   await favorites.save(input);
-  modal.value = null; notice.value = '收藏已保存。';
+  modal.value = null; feedback('收藏已保存。');
 }
 async function deleteFavorite(id: string) {
   await favorites.remove(id);
-  modal.value = null; notice.value = '收藏已删除。';
+  modal.value = null; feedback('收藏已删除。');
 }
 async function deleteCookies(items: Cookie[]) {
   if (!target.value) return;
@@ -150,7 +135,7 @@ async function deleteCookies(items: Cookie[]) {
 }
 async function revoke(origin: string) {
   await settings.revoke(origin);
-  modal.value = null; await read(); notice.value = '已移除网站授权。';
+  modal.value = null; await read(); feedback('已移除网站授权。');
 }
 
 function confirmDelete(items: Cookie[], clear = false) {
@@ -175,7 +160,6 @@ onMounted(() => run(async () => {
   await bindTarget();
 }));
 onUnmounted(() => {
-  clearTimeout(toastTimer);
   if (available) chrome.storage.onChanged.removeListener(storageChanged);
 });
 </script>
@@ -233,8 +217,6 @@ onUnmounted(() => {
       </template>
     </section>
     <template v-if="!manager">
-      <div v-if="error" class="notice error" role="alert">{{ error }}</div>
-      <div v-if="notice && noticeType !== 'success'" class="notice" role="status">{{ notice }}</div>
       <div v-if="busy" class="working" role="status">正在处理，请稍候…</div>
     </template>
     <section v-if="state.clipboard" class="clipboard-card" aria-label="临时复制">
@@ -363,12 +345,7 @@ onUnmounted(() => {
       @clear-error="dialogError = ''"
     >
       <template #feedback>
-        <Transition name="toast-slide">
-          <div v-if="toastMessage" class="toast" :class="`toast-${toastType}`" :role="toastType === 'error' ? 'alert' : 'status'" aria-atomic="true">
-            <span aria-hidden="true">{{ toastType === 'success' ? '✓' : '!' }}</span>
-            <span>{{ toastMessage }}</span>
-          </div>
-        </Transition>
+        <Toaster :position="manager ? 'top-center' : 'bottom-right'" container-aria-label="通知" rich-colors />
       </template>
     </CookieDialog>
   </main>

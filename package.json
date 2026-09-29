@@ -1,6 +1,6 @@
 {
   "name": "cookie-bridge",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "private": true,
   "type": "module",
   "engines": {
@@ -14,7 +14,8 @@
     "typecheck": "vue-tsc --noEmit"
   },
   "dependencies": {
-    "vue": "3.5.43"
+    "vue": "3.5.43",
+    "vue-sonner": "^2.0.9"
   },
   "devDependencies": {
     "@crxjs/vite-plugin": "2.7.1",
